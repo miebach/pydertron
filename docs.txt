@@ -1,0 +1,124 @@
+=========
+Pydertron
+=========
+
+Pydertron is an experimental high-level wrapper for `Pydermonkey`__
+that provides convenient, secure object wrapping between JS and Python
+space.
+
+Note that Pydertron is just one example of a high-level interface
+between Python and JavaScript: it assumes, for instance, that the JS
+code it executes isn't trusted, which affects the nature of the
+inter-language interaction.
+
+Pydertron is currently hosted at
+http://hg.toolness.com/pydertron. Please feel free to send any
+questions or comments to atul@mozilla.com.
+
+The Basics
+----------
+
+The ``JsSandbox`` class encapsulates a JavaScript runtime, context, global
+object, and a simple `SecurableModule`__ implementation that complies
+with the `CommonJS`__ standard. It also provides a high-level bridge between
+Python and JavaScript so that you don't need to deal with any of the
+low-level details of the Pydermonkey API.
+
+__ http://code.google.com/p/pydermonkey
+__ http://wiki.commonjs.org/wiki/CommonJS/Modules/SecurableModules
+__ http://wiki.commonjs.org/wiki/CommonJS
+
+For instance, here we'll create a ``JsSandbox`` whose module root
+points to the `monkeys`__ SecurableModule compliance test over HTTP:
+
+  >>> url = ("http://interoperablejs.googlecode.com/svn/trunk/"
+  ...        "compliance/monkeys/")
+  >>> sandbox = JsSandbox(HttpFileSystem(url))
+
+__ http://interoperablejs.googlecode.com/svn/trunk/compliance/monkeys/
+
+This compliance test requires a global ``sys`` object that contains one
+method, ``print()``, that takes two arguments. First, we'll create the
+``print()`` function and prepare it for exposure to JS code:
+
+  >>> @jsexposed
+  ... def jsprint(message, label):
+  ...   print message, label
+
+Note the use of the ``@jsexposed`` decorator: all this does is set
+the function's ``__jsexposed__`` attribute to ``True``. This is
+done for security purposes: only Python callables satisfying this
+criteria will be exposed to JavaScript code, to ensure that
+untrusted JS can't accidentally gain access to privileged Python
+functionality.
+
+Creating a JS object can be done like this:
+
+  >>> system = sandbox.new_object()
+
+We can now access and set properties on this object via either
+item or attribute lookup, just like in JavaScript. Because
+``print`` is a reserved word in Python, though, we'll use item
+lookup to set the property here:
+
+  >>> system['print'] = jsprint
+
+Now we tell the sandbox that we want the ``sys`` object to be a
+global:
+
+  >>> sandbox.set_globals(sys = system)
+
+And finally, we execute the compliance test by running a one-line
+script that imports the 'program' module, like so:
+
+  >>> sandbox.run_script("require('program');")
+  PASS monkeys permitted pass
+  DONE info
+  0
+
+Note the ``0`` in the last line: this is the return value of
+``sandbox.run_script()``, which returns ``0`` on success, and
+``-1`` if an exception was raised. For instance, the output of bad
+code looks like this:
+
+  >>> sandbox.run_script("(function foo() { bar(); })();",
+  ...                    stderr=sys.stdout)
+  Traceback (most recent call last):
+    File "<string>", line 1, in <module>
+    File "<string>", line 1, in foo
+  ReferenceError: bar is not defined
+  -1
+
+Note that the traceback displayed is actually referring to JavaScript
+code: one of Pydertron's aims is to make debugging JS code as much
+like debugging Python code as possible.
+
+Exceptions
+----------
+
+Any exceptions raised by wrapped Python functions need to be of type
+``pydermonkey.error`` to be propagated into calling JavaScript code;
+if they're not, then for security purposes, the entire JavaScript call
+stack is unrolled.
+
+For example, here's a function that's bound to fail:
+
+  >>> @jsexposed
+  ... def fail():
+  ...   o()
+  >>> sandbox.root.fail = fail
+
+Now, even though the following JS code calls the function in a
+try-catch block, the JS code doesn't catch anything and its execution
+is simply halted:
+
+  >>> sandbox.run_script("try { fail(); } catch (e) {}",
+  ...                    stderr=sys.stdout)  #doctest: +ELLIPSIS
+  An internal error occurred.
+  Traceback (most recent call last):
+  ...
+  NameError: global name 'o' is not defined
+  -1
+
+Note that a ``KeyboardInterrupt`` triggered while JS is executing will
+have similar effect.

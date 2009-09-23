@@ -1,0 +1,42 @@
+body {
+    font-family: palatino, georgia, verdana, arial, sans-serif;
+    font-size: 12pt;
+}
+
+h1 {
+    font-weight: normal;
+}
+
+.doctest-block {
+    font-family: monaco, andale mono, lucidatypewriter, courier,
+                 courier new, monospace;
+    font-size: 10pt;
+    background-color: #eeeeee;
+}
+
+.literal {
+    font-family: monaco, andale mono, lucidatypewriter, courier,
+                 courier new, monospace;    
+    font-size: 10pt;
+    background-color: #eeeeee;
+}
+
+a {
+    color: black;
+}
+
+.document {
+    width: 50em;
+    margin: 0 auto;
+}
+
+hr {
+    display: none;
+}
+
+.footer {
+    text-align: right;
+    width: 50em;
+    padding: 0.25em;
+    margin: 0 auto;
+}

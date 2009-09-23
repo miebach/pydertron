@@ -1,0 +1,5 @@
+#! /bin/bash
+
+export DOCS=docs.html
+rst2html.py docs.txt $DOCS -s --link-stylesheet --stylesheet-path=docs.css
+echo Documentation written to $DOCS.
