@@ -553,7 +553,23 @@ class JsSandbox(object):
         if not filename in self.__modules:
             cx = self.cx
             module = cx.new_object(None, self.__root_proto)
-            cx.init_standard_classes(module)
+            try: 
+              # This throws an exception because it is already done in 
+              # the __init__ method:
+              cx.init_standard_classes(module)
+              # I have not removed the line above, because I don't know if there
+              # are cases where it is necessary.  
+            except pydermonkey.error:
+              try:
+                errmsg = sys.exc_info()[1][0]
+              except: 
+                errmsg = ""
+              if (errmsg != "Can't init standard classes on the same context twice."):
+                raise
+              # Importing standard classes twice is silently ignored at this point
+              # All other exceptions are re-raised. km 23.9.2009
+            except:
+              raise
             exports = cx.new_object()
             cx.define_property(module, 'exports', exports)
             self._install_globals(self.wrap_jsobject(module))
