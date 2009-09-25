@@ -275,6 +275,17 @@ class JsExposedObject(object):
 
     pass
 
+def type_info(value):
+    """
+    Returns extended type information as string.
+    In case of type "instance" the name of the class is added.
+    """
+    type_name = type(value).__name__
+    if (type_name == "instance"):
+        type_name = "instance of %s " % value.__class__
+    return type_name
+
+
 class JsSandbox(object):
     """
     A JS runtime and associated functionality capable of securely
@@ -462,7 +473,9 @@ class JsSandbox(object):
             return self.__wrap_pyinstance(value)
         else:
             raise TypeError("Can't expose objects of type '%s' to JS." %
-                            type(value).__name__)
+                            type_info(value))
+
+
 
     def wrap_jsobject(self, jsvalue, this=None):
         """
